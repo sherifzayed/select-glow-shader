@@ -30,6 +30,16 @@ export default function App() {
     opacity: { value: 0.85, min: 0, max: 1, step: 0.01 },
   });
 
+  const travel = useControls("Traveling highlight", {
+    travelColor: "#ffffff",
+    travelStrength: { value: 0.39, min: 0, max: 3, step: 0.01 },
+    travelSpeed: { value: 0.38, min: -1, max: 1, step: 0.01 },
+    travelLength: { value: 0.29, min: 0.01, max: 1, step: 0.01 },
+    travelFeather: { value: 0.32, min: 0, max: 0.5, step: 0.01 },
+    travelWidth: { value: 0.97, min: 0.01, max: 3, step: 0.01 },
+    travelSharpness: { value: 4.8, min: 0.1, max: 6, step: 0.1 },
+  });
+
   return (
     <Canvas
       shadows
@@ -55,54 +65,63 @@ export default function App() {
         position={[0, 0, 0]}
         glowColor="#22e0ff"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={rect(6, 6)}
         position={[-16, 0, 6]}
         glowColor="#37f5c8"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={rect(5, 12)}
         position={[16, 0, -4]}
         glowColor="#3aa0ff"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={LShape}
         position={[-14, 0, -14]}
         glowColor="#7a5cff"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={regularPoly(6, 6)}
         position={[15, 0, 15]}
         glowColor="#ff8a3a"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={regularPoly(5, 5.5)}
         position={[2, 0, -20]}
         glowColor="#ff5ca8"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={Irregular}
         position={[-20, 0, 20]}
         glowColor="#5cff8a"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={TShape}
         position={[24, 0, 8]}
         glowColor="#ffd23a"
         {...glow}
+        {...travel}
       />
       <GlowPlane
         outline={Chevron}
         position={[-2, 0, 22]}
         glowColor="#3affe0"
         {...glow}
+        {...travel}
       />
 
       <OrbitControls

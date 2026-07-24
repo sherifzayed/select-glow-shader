@@ -15,6 +15,13 @@ export interface GlowPlaneProps {
   outerDistance?: number;
   outerSharpness?: number;
   opacity?: number;
+  travelColor?: string;
+  travelSpeed?: number;
+  travelLength?: number;
+  travelFeather?: number;
+  travelWidth?: number;
+  travelSharpness?: number;
+  travelStrength?: number;
 }
 
 /**
@@ -37,6 +44,13 @@ export default function GlowPlane({
   outerDistance = 2.0,
   outerSharpness = 2.0,
   opacity = 1,
+  travelColor = "#ffffff",
+  travelSpeed = 0.38,
+  travelLength = 0.29,
+  travelFeather = 0.32,
+  travelWidth = 0.97,
+  travelSharpness = 4.8,
+  travelStrength = 0.39,
 }: GlowPlaneProps) {
   // The glow (edge band + inner/outer halo) is computed in the shader from the
   // outline itself, so the geometry only needs to supply fragments wherever the
@@ -78,6 +92,13 @@ export default function GlowPlane({
           outerDistance={outerDistance}
           outerSharpness={outerSharpness}
           opacity={opacity}
+          travelColor={travelColor}
+          travelSpeed={travelSpeed}
+          travelLength={travelLength}
+          travelFeather={travelFeather}
+          travelWidth={travelWidth}
+          travelSharpness={travelSharpness}
+          travelStrength={travelStrength}
           side={DoubleSide}
         />
       </mesh>
