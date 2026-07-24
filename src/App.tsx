@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, ContactShadows } from "@react-three/drei";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { OrbitControls } from "@react-three/drei";
+import { useControls } from "leva";
 import GlowPlane from "./GlowPlane";
 import {
   rect,
@@ -20,6 +20,16 @@ import {
  * sky above the horizon it naturally fades out.
  */
 export default function App() {
+  const glow = useControls("Glow", {
+    edgeThickness: { value: 0.9, min: 0, max: 3, step: 0.01 },
+    edgeSharpness: { value: 2.2, min: 0.1, max: 6, step: 0.1 },
+    innerGlow: { value: 0.25, min: 0, max: 1, step: 0.01 },
+    outerGlow: { value: 0.8, min: 0, max: 2, step: 0.01 },
+    outerDistance: { value: 2.0, min: 0, max: 8, step: 0.1 },
+    outerSharpness: { value: 2.0, min: 0.1, max: 6, step: 0.1 },
+    opacity: { value: 0.85, min: 0, max: 1, step: 0.01 },
+  });
+
   return (
     <Canvas
       shadows
@@ -44,39 +54,56 @@ export default function App() {
         outline={rect(14, 10)}
         position={[0, 0, 0]}
         glowColor="#22e0ff"
+        {...glow}
       />
       <GlowPlane
         outline={rect(6, 6)}
         position={[-16, 0, 6]}
         glowColor="#37f5c8"
+        {...glow}
       />
       <GlowPlane
         outline={rect(5, 12)}
         position={[16, 0, -4]}
         glowColor="#3aa0ff"
+        {...glow}
       />
       <GlowPlane
         outline={LShape}
         position={[-14, 0, -14]}
         glowColor="#7a5cff"
+        {...glow}
       />
       <GlowPlane
         outline={regularPoly(6, 6)}
         position={[15, 0, 15]}
         glowColor="#ff8a3a"
+        {...glow}
       />
       <GlowPlane
         outline={regularPoly(5, 5.5)}
         position={[2, 0, -20]}
         glowColor="#ff5ca8"
+        {...glow}
       />
       <GlowPlane
         outline={Irregular}
         position={[-20, 0, 20]}
         glowColor="#5cff8a"
+        {...glow}
       />
-      <GlowPlane outline={TShape} position={[24, 0, 8]} glowColor="#ffd23a" />
-      <GlowPlane outline={Chevron} position={[-2, 0, 22]} glowColor="#3affe0" />
+      <GlowPlane
+        outline={TShape}
+        position={[24, 0, 8]}
+        glowColor="#ffd23a"
+        {...glow}
+      />
+      <GlowPlane
+        outline={Chevron}
+        position={[-2, 0, 22]}
+        glowColor="#3affe0"
+        {...glow}
+      />
 
       <OrbitControls
         makeDefault

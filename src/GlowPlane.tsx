@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Shape, ShapeGeometry, DoubleSide } from "three";
+import { PlaneGeometry, DoubleSide } from "three";
 import FakeGlowMaterial from "./FakeGlowMaterial";
 import type { Point } from "./shapes";
 
@@ -7,8 +7,14 @@ export interface GlowPlaneProps {
   /** Closed polygon outline in local 2D coords. */
   outline: Point[];
   position?: [number, number, number];
-  color?: string;
   glowColor?: string;
+  edgeThickness?: number;
+  edgeSharpness?: number;
+  innerGlow?: number;
+  outerGlow?: number;
+  outerDistance?: number;
+  outerSharpness?: number;
+  opacity?: number;
 }
 
 /**
@@ -23,19 +29,37 @@ export interface GlowPlaneProps {
 export default function GlowPlane({
   outline,
   position = [0, 0, 0],
-  color = "#7cae54",
   glowColor = "#22e0ff",
+  edgeThickness = 0.9,
+  edgeSharpness = 2.2,
+  innerGlow = 0.2,
+  outerGlow = 0.8,
+  outerDistance = 2.0,
+  outerSharpness = 2.0,
+  opacity = 1,
 }: GlowPlaneProps) {
-  // Build the flat geometry from the outline (shape lives in local XY).
+  // The glow (edge band + inner/outer halo) is computed in the shader from the
+  // outline itself, so the geometry only needs to supply fragments wherever the
+  // glow can appear. A ShapeGeometry stops at the outline — leaving nowhere to
+  // draw the OUTER halo. Instead we use the outline's bounding box padded by the
+  // outer-glow reach, so fragments exist beyond every edge.
   const geometry = useMemo(() => {
-    const shape = new Shape();
-    shape.moveTo(outline[0][0], outline[0][1]);
-    for (let i = 1; i < outline.length; i++) {
-      shape.lineTo(outline[i][0], outline[i][1]);
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const [x, y] of outline) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
     }
-    shape.closePath();
-    return new ShapeGeometry(shape);
-  }, [outline]);
+    const pad = outerDistance + 0.5;
+    const g = new PlaneGeometry(maxX - minX + pad * 2, maxY - minY + pad * 2);
+    // Center the plane on the outline's bbox so local xy matches outline space.
+    g.translate((minX + maxX) / 2, (minY + maxY) / 2, 0);
+    return g;
+  }, [outline, outerDistance]);
 
   return (
     <group position={position}>
@@ -47,10 +71,13 @@ export default function GlowPlane({
         <FakeGlowMaterial
           points={outline}
           glowColor={glowColor}
-          edgeThickness={0.9}
-          edgeSharpness={2.2}
-          innerGlow={0.25}
-          opacity={0.85}
+          edgeThickness={edgeThickness}
+          edgeSharpness={edgeSharpness}
+          innerGlow={innerGlow}
+          outerGlow={outerGlow}
+          outerDistance={outerDistance}
+          outerSharpness={outerSharpness}
+          opacity={opacity}
           side={DoubleSide}
         />
       </mesh>

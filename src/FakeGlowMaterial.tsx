@@ -26,6 +26,12 @@ export interface FakeGlowMaterialProps {
   edgeSharpness?: number;
   /** View-dependent fresnel glow filling the interior. 0 = edges only. */
   innerGlow?: number;
+  /** Intensity of the halo bleeding OUTSIDE the outline. 0 = no outer glow. */
+  outerGlow?: number;
+  /** How far, in world units, the outer glow reaches beyond the edge. */
+  outerDistance?: number;
+  /** Falloff exponent of the outer halo. Higher = tighter to the edge. */
+  outerSharpness?: number;
   /** Glow color, hexadecimal. */
   glowColor?: string;
   /** Material side. */
@@ -61,6 +67,9 @@ const FakeGlowMaterial = ({
   edgeThickness = 0.9,
   edgeSharpness = 2.0,
   innerGlow = 0.25,
+  outerGlow = 0.0,
+  outerDistance = 2.0,
+  outerSharpness = 2.0,
   glowColor = "#22e0ff",
   side = DoubleSide,
   depthTest = true,
@@ -90,6 +99,9 @@ const FakeGlowMaterial = ({
         uEdgeThickness: edgeThickness,
         uEdgeSharpness: edgeSharpness,
         uInnerGlow: innerGlow,
+        uOuterGlow: outerGlow,
+        uOuterDistance: outerDistance,
+        uOuterSharpness: outerSharpness,
         glowColor: new Color(glowColor),
         opacity: opacity,
       },
@@ -98,21 +110,47 @@ const FakeGlowMaterial = ({
       void main(){vec4 wp=modelMatrix*vec4(position,1.);gl_Position=projectionMatrix*viewMatrix*wp;vLocal=position.xy;vPosition=wp.xyz;vNormal=mat3(modelMatrix)*normal;}`,
       /*GLSL fragment: distance-to-nearest-edge border + fresnel inner glow */
       `#define N ${MAX_POINTS}
-      uniform vec3 glowColor;uniform vec2 uPoints[N];uniform int uCount;uniform float uEdgeThickness,uEdgeSharpness,uInnerGlow,opacity;
+      uniform vec3 glowColor;uniform vec2 uPoints[N];uniform int uCount;uniform float uEdgeThickness,uEdgeSharpness,uInnerGlow,uOuterGlow,uOuterDistance,uOuterSharpness,opacity;
       varying vec2 vLocal;varying vec3 vPosition,vNormal;
       float seg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;return length(pa-ba*clamp(dot(pa,ba)/max(dot(ba,ba),1e-6),0.,1.));}
       void main(){
+        // Single pass: nearest-edge distance AND inside/outside test (ray cast).
         float d=1e9;
-        for(int i=0;i<N-1;i++){if(i>=uCount)break;d=min(d,seg(vLocal,uPoints[i],uPoints[i+1]));}
-        float border=pow(1.-smoothstep(0.,uEdgeThickness,d),uEdgeSharpness);
+        bool inside=false;
+        for(int i=0;i<N-1;i++){
+          if(i>=uCount)break;
+          vec2 a=uPoints[i],b=uPoints[i+1];
+          d=min(d,seg(vLocal,a,b));
+          if(((a.y>vLocal.y)!=(b.y>vLocal.y))&&(vLocal.x<(b.x-a.x)*(vLocal.y-a.y)/(b.y-a.y)+a.x)) inside=!inside;
+        }
         vec3 n=normalize(vNormal);if(!gl_FrontFacing)n=-n;
         float fres=pow(clamp(dot(normalize(cameraPosition-vPosition),n),0.,1.),2.);
-        gl_FragColor=vec4(glowColor,clamp(border+uInnerGlow*fres,0.,1.)*opacity);
+        float alpha;
+        if(inside){
+          // Inward edge band + view-dependent interior fresnel.
+          float border=pow(1.-smoothstep(0.,uEdgeThickness,d),uEdgeSharpness);
+          alpha=border+uInnerGlow*fres;
+        }else{
+          // Halo fading outward from the edge.
+          alpha=uOuterGlow*pow(1.-smoothstep(0.,uOuterDistance,d),uOuterSharpness);
+        }
+        gl_FragColor=vec4(glowColor,clamp(alpha,0.,1.)*opacity);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`
     );
-  }, [padded, count, edgeThickness, edgeSharpness, innerGlow, glowColor, opacity]);
+  }, [
+    padded,
+    count,
+    edgeThickness,
+    edgeSharpness,
+    innerGlow,
+    outerGlow,
+    outerDistance,
+    outerSharpness,
+    glowColor,
+    opacity,
+  ]);
 
   extend({ FakeGlowMaterial: FakeGlowMaterialImpl });
 
