@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Shape, ShapeGeometry, DoubleSide } from "three";
-import type { ThreeEvent } from "@react-three/fiber";
 import FakeGlowMaterial from "./FakeGlowMaterial";
 import type { Point } from "./shapes";
 
@@ -19,7 +18,7 @@ export interface GlowPlaneProps {
  * The same outline drives two things: a ShapeGeometry for the grass surface,
  * and the `points` uniform the shader uses to compute each fragment's distance
  * to the nearest edge — so a single mesh draws its own glowing border, whatever
- * the shape. Hovering intensifies the effect.
+ * the shape.
  */
 export default function GlowPlane({
   outline,
@@ -27,8 +26,6 @@ export default function GlowPlane({
   color = "#7cae54",
   glowColor = "#22e0ff",
 }: GlowPlaneProps) {
-  const [hovered, setHovered] = useState(false);
-
   // Build the flat geometry from the outline (shape lives in local XY).
   const geometry = useMemo(() => {
     const shape = new Shape();
@@ -42,21 +39,6 @@ export default function GlowPlane({
 
   return (
     <group position={position}>
-      {/* The lot surface */}
-      <mesh
-        geometry={geometry}
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-        onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-          e.stopPropagation();
-          setHovered(true);
-        }}
-        onPointerOut={() => setHovered(false)}
-      >
-        <meshStandardMaterial color={color} roughness={0.95} side={DoubleSide} />
-      </mesh>
-
-      {/* Shape-aware glow — one mesh, the shader draws its own border */}
       <mesh
         geometry={geometry}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -65,10 +47,10 @@ export default function GlowPlane({
         <FakeGlowMaterial
           points={outline}
           glowColor={glowColor}
-          edgeThickness={hovered ? 1.3 : 0.9}
-          edgeSharpness={hovered ? 1.6 : 2.2}
-          innerGlow={hovered ? 0.45 : 0.25}
-          opacity={hovered ? 1.0 : 0.85}
+          edgeThickness={0.9}
+          edgeSharpness={2.2}
+          innerGlow={0.25}
+          opacity={0.85}
           side={DoubleSide}
         />
       </mesh>

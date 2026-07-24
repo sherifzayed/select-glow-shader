@@ -73,14 +73,14 @@ const FakeGlowMaterial = ({
   // vertex is duplicated at index `count` so the shader can close the polygon
   // with a plain `uPoints[i + 1]` (a constant-index-expression) instead of a
   // conditional wrap index, which some GLSL ES 1.00 drivers reject.
-  const padded = useMemo(() => {
-    const arr: Vector2[] = new Array(MAX_POINTS);
-    for (let i = 0; i < MAX_POINTS; i++) {
-      const p = i < count ? points[i] : points[0];
-      arr[i] = new Vector2(p ? p[0] : 0, p ? p[1] : 0);
-    }
-    return arr;
-  }, [points, count]);
+  const padded = useMemo(
+    () =>
+      Array.from({ length: MAX_POINTS }, (_, i) => {
+        const p = points[i < count ? i : 0] ?? [0, 0];
+        return new Vector2(p[0], p[1]);
+      }),
+    [points, count]
+  );
 
   const FakeGlowMaterialImpl = useMemo(() => {
     return shaderMaterial(
@@ -94,66 +94,20 @@ const FakeGlowMaterial = ({
         opacity: opacity,
       },
       /*GLSL vertex */
-      `
-      varying vec2 vLocal;
-      varying vec3 vPosition;
-      varying vec3 vNormal;
-
-      void main() {
-        vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-        gl_Position = projectionMatrix * viewMatrix * modelPosition;
-        vec4 modelNormal = modelMatrix * vec4(normal, 0.0);
-        vLocal = position.xy;      // shape-local 2D coords (matches uPoints)
-        vPosition = modelPosition.xyz;
-        vNormal = modelNormal.xyz;
-      }`,
-      /*GLSL fragment */
-      `
-      #define MAX_POINTS ${MAX_POINTS}
-
-      uniform vec3 glowColor;
-      uniform vec2 uPoints[MAX_POINTS];
-      uniform int uCount;
-      uniform float uEdgeThickness;
-      uniform float uEdgeSharpness;
-      uniform float uInnerGlow;
-      uniform float opacity;
-
-      varying vec2 vLocal;
-      varying vec3 vPosition;
-      varying vec3 vNormal;
-
-      // Shortest distance from point p to segment a-b.
-      float distToSeg(vec2 p, vec2 a, vec2 b) {
-        vec2 pa = p - a;
-        vec2 ba = b - a;
-        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
-        return length(pa - ba * h);
-      }
-
-      void main() {
-        // Distance to the nearest edge of the (closed) outline polygon.
-        // uPoints[uCount] duplicates uPoints[0], so segment i is (i, i+1) for
-        // all edges including the closing one — no conditional wrap index.
-        float minDist = 1e9;
-        for (int i = 0; i < MAX_POINTS - 1; i++) {
-          if (i >= uCount) break;
-          minDist = min(minDist, distToSeg(vLocal, uPoints[i], uPoints[i + 1]));
-        }
-
-        // Border band: bright at the edge, fading uEdgeThickness inward.
-        float border = 1.0 - smoothstep(0.0, uEdgeThickness, minDist);
-        border = pow(border, uEdgeSharpness);
-
-        // Fresnel: the view-dependent "inner glow" that fills the surface.
-        vec3 normal = normalize(vNormal);
-        if(!gl_FrontFacing) normal *= -1.0;
-        vec3 viewDirection = normalize(cameraPosition - vPosition);
-        float fresnel = pow(clamp(dot(viewDirection, normal), 0.0, 1.0), 2.0);
-
-        float glow = clamp(border + uInnerGlow * fresnel, 0.0, 1.0);
-        gl_FragColor = vec4(glowColor, glow * opacity);
-
+      `varying vec2 vLocal;varying vec3 vPosition,vNormal;
+      void main(){vec4 wp=modelMatrix*vec4(position,1.);gl_Position=projectionMatrix*viewMatrix*wp;vLocal=position.xy;vPosition=wp.xyz;vNormal=mat3(modelMatrix)*normal;}`,
+      /*GLSL fragment: distance-to-nearest-edge border + fresnel inner glow */
+      `#define N ${MAX_POINTS}
+      uniform vec3 glowColor;uniform vec2 uPoints[N];uniform int uCount;uniform float uEdgeThickness,uEdgeSharpness,uInnerGlow,opacity;
+      varying vec2 vLocal;varying vec3 vPosition,vNormal;
+      float seg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;return length(pa-ba*clamp(dot(pa,ba)/max(dot(ba,ba),1e-6),0.,1.));}
+      void main(){
+        float d=1e9;
+        for(int i=0;i<N-1;i++){if(i>=uCount)break;d=min(d,seg(vLocal,uPoints[i],uPoints[i+1]));}
+        float border=pow(1.-smoothstep(0.,uEdgeThickness,d),uEdgeSharpness);
+        vec3 n=normalize(vNormal);if(!gl_FrontFacing)n=-n;
+        float fres=pow(clamp(dot(normalize(cameraPosition-vPosition),n),0.,1.),2.);
+        gl_FragColor=vec4(glowColor,clamp(border+uInnerGlow*fres,0.,1.)*opacity);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`
